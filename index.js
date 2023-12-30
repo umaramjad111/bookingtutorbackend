@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const studentRoutes = require('./routers/student');
 const userRoutes = require('./routers/user');
 require('dotenv').config(); // Load environment variables
 
@@ -25,6 +26,7 @@ db.once('open', () => {
 
 // Routes
 app.use('/api/users', userRoutes);
+app.use('/api/students', studentRoutes);
 
 // Start the server
 const PORT = process.env.PORT || 9000;

@@ -3,19 +3,19 @@ const mongoose = require('mongoose');
 const studentSchema = new mongoose.Schema({
     studentName: {
         type: String,
-        required: true
+        // required: true
     },
     subject: {
         type: String,
-        required: true
+        // required: true
     },
     age: {
-        type: String,
-        required: true
+        type: Number,
+        // required: true
     },
     gender: {
         type: String,
-        required: true
+        // required: true
     },
     email: {
         type: String,
@@ -25,7 +25,8 @@ const studentSchema = new mongoose.Schema({
     password: {
         type: String,
         required: true
-    }
+    },
+    verified: {type: Boolean, default: false},
 });
 
 const Student = mongoose.model('Student', studentSchema); // Create the Data model

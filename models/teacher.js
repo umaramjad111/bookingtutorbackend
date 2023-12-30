@@ -41,7 +41,8 @@ const teacherSchema = new mongoose.Schema({
     password: {
         type: String,
         required: true
-    }
+    },
+    verified: {type: Boolean, default: false},
 });
 
 const Teacher = mongoose.model('Teacher', teacherSchema); // Create the Data model
