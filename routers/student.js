@@ -8,15 +8,15 @@ const path = require("path");
 const sendEmail = require('../utils/sendEmail');
 const crypto = require('crypto');
 
-router.post('/', async (req, res) => {
+router.post('/create', async (req, res) => {
+   
     try {
         // const { error } = validate(req.body);
         // if (error)
         //     return res.status(400).send({ message: error.details[0].message });
 
         let user = await User.findOne({ email: req.body.email });
-        if (user)
-            return res.status(409).send({ message: 'Student already registered.' });
+        if (user)  return res.status(409).send({ message: 'Student already registered.' });
 
         const salt = await bcrypt.genSalt(Number(process.env.SALT));
         const passwordHash = await bcrypt.hash(req.body.password, salt);
@@ -27,10 +27,12 @@ router.post('/', async (req, res) => {
             userId: user._id,
             token: crypto.randomBytes(32).toString('hex'),
         }).save();
-        const url = `${process.env.BASE_URL}users/${user._id}/verify/${token.token}`; 
+        const url = `${process.env.BASE_URL}students/${user._id}/verify/${token.token}`; 
+        
         await sendEmail(user.email, 'Email Verification', url);
-
-        res.status(201).send({ message: 'An Email sent to your account, please verify.' });
+        console.log("dasdas" , user.email , url , req )
+        
+        res.status(200).send("done");
     } catch (error) {
         res.status(500).send({ message: "Internal Server Error" });
     }
