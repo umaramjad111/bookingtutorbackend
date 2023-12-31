@@ -1,9 +1,10 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const studentRoutes = require('./routers/student');
 const userRoutes = require('./routers/user');
-require('dotenv').config(); // Load environment variables
+ // Load environment variables
 
 const app = express();
 app.use(express.json());
@@ -13,8 +14,8 @@ app.use(cors());
 const mongoURI = process.env.MONGO_URI;
 
 mongoose.connect(mongoURI, {
-    // useNewUrlParser: true,
-    // useUnifiedTopology: true,
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
   });
 
   const db = mongoose.connection;
