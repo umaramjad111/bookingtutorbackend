@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 
 const studentSchema = new mongoose.Schema({
-    studentName: {
+    name: {
         type: String,
         // required: true
     },
@@ -27,7 +28,19 @@ const studentSchema = new mongoose.Schema({
         required: true
     },
     verified: {type: Boolean, default: false},
+    messages: [{ from: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher' }, role: {type: String} , name: {type: String} ,  message: {type: String} , timestamp: {type: Date , default: Date.now} }],
 });
+
+studentSchema.methods.generateAuthToken = function () {
+    const token = jwt.sign(
+        {
+            _id: this._id,
+        },
+        process.env.JWT_SECRET_KEY,
+        { expiresIn: "1d" }
+    );
+    return token;
+}
 
 const Student = mongoose.model('Student', studentSchema); // Create the Data model
 

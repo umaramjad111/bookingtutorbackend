@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const  User  = require('../models/student');
+const  Teacher  = require('../models/teacher');
 const bcrypt = require('bcrypt');
 const Token = require('../models/token');
 const multer = require('multer');
@@ -7,6 +8,8 @@ const jwt = require('jsonwebtoken');
 const path = require("path");
 const sendEmail = require('../utils/sendEmail');
 const crypto = require('crypto');
+const { getIO } = require('../socket');
+
 
 router.post('/create', async (req, res) => {
    
@@ -52,7 +55,61 @@ router.get('/:id/verify/:token', async (req, res) => {
 
         await Token.deleteOne({ _id: token._id });
 
-        res.status(200).send({ message: 'Email Verified Successfully' });
+        const htmlMessage = `
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Email Verified</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: #f4f4f4;
+              text-align: center;
+              margin: 0;
+              padding: 20px;
+            }
+            .container {
+              max-width: 600px;
+              margin: 0 auto;
+              background-color: #fff;
+              border-radius: 8px;
+              box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+              padding: 30px;
+            }
+            h1 {
+              color: #333;
+            }
+            p {
+              color: #666;
+            }
+            .btn {
+              display: inline-block;
+              padding: 10px 20px;
+              margin-top: 20px;
+              text-decoration: none;
+              background-color: #007bff;
+              color: #fff;
+              border-radius: 5px;
+              transition: background-color 0.3s ease;
+            }
+            .btn:hover {
+              background-color: #0056b3;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>Email Verified Successfully</h1>
+            <p>Your email has been successfully verified. You can close this window or go back to the application.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+        // res.status(200).send({ message: 'Email Verified Successfully' });
+        res.status(200).send(htmlMessage);
     } catch (error) {
         res.status(500).send({ message: error.message });
     }
@@ -64,6 +121,7 @@ router.post('/login', async (req, res) => {
   
     try {
       const user = await User.findOne({ email });
+      // const user = await User.findOne({ email: req.body.email });
   
       if (!user) {
         return res.status(404).json({ message: 'User not found.' });
@@ -80,11 +138,89 @@ router.post('/login', async (req, res) => {
       }
   
       // Password is correct, proceed with login
-      res.status(200).json({ message: 'Login successfully' , user });
+
+      let token = null;
+
+      if(user) {
+        token = user.generateAuthToken();
+        res.status(200).send({ userData: user, tokens: {access_token: token, expires_in: "1d"} , message: 'Logged in Successfully.' });
+    }
+
+      // res.status(200).json({ message: 'Login successfully' , user });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   });
+
+        // Read a single item by ID
+router.get('/get/:id', async (req, res) => {
+  try {
+    const itemId = req.params.id;
+    const item = await User.findById(itemId);
+
+    if (!item) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    res.json(item);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/get/:studentId/:teacherId', async (req, res) => {
+  try {
+    const { studentId, teacherId } = req.params;
+
+    // Find the student by studentId
+    const student = await User.findById(studentId);
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // Find the specific chat messages for the given teacherId
+    const teacherMessages = student.messages.filter(
+      message => String(message.from) === teacherId
+    );
+
+    res.json(teacherMessages );
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+//send message to teacher
+
+router.post('/sendmessage/:studentId/:teacherId', async (req, res) => {
+  try {
+    
+    const { studentId , teacherId } = req.params;
+    const {  message } = req.body;
+
+    console.log("object" , studentId , teacherId , message)
+
+    const student = await User.findById(studentId);
+    const teacher = await Teacher.findById(teacherId);
+
+    if (!student || !teacher) {
+      return res.status(404).json({ message: 'Student or Teacher not found' });
+    }
+
+    teacher.messages.push({ from: studentId, message , role: "student" ,  name: student.name  });
+    await teacher.save();
+
+    const io = getIO();
+    io.to(teacher).emit('studentSendMessage', { from: studentId, message });
+
+    res.status(200).json({ message: 'Message sent to Teacher', teacher });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+
 
 
 
