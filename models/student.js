@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
+const BookTutor = require("../models/booktutor");
 
 const studentSchema = new mongoose.Schema({
     name: {
@@ -27,8 +28,36 @@ const studentSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    isOnline: {
+        type: Boolean,
+        default: false // Set default status as offline
+      },
+      notifications: [
+        {
+            // teacher: {
+            //     type: mongoose.Schema.Types.ObjectId,
+            //     ref: 'Teacher',
+            //     // required: true,
+            //   },
+            teacherId: {
+                type:String,
+            },
+            bookingId: {
+                type: String
+            },
+          message: String,
+          teachername: String,
+          timestamp: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
     verified: {type: Boolean, default: false},
     messages: [{ from: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher' }, role: {type: String} , name: {type: String} ,  message: {type: String} , timestamp: {type: Date , default: Date.now} }],
+    bookings: [
+        BookTutor.schema
+      ],
 });
 
 studentSchema.methods.generateAuthToken = function () {

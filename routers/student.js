@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const  User  = require('../models/student');
 const  Teacher  = require('../models/teacher');
+const  Message  = require('../models/message');
 const bcrypt = require('bcrypt');
 const Token = require('../models/token');
 const multer = require('multer');
@@ -116,11 +117,33 @@ router.get('/:id/verify/:token', async (req, res) => {
 });
 
 
+const setUserOnline = async (userId) => {
+  console.log("userId" , userId)
+  try {
+    await User.findByIdAndUpdate(userId, { isOnline: true });
+  } catch (error) {
+    console.error('Error setting user online status:', error.message);
+  }
+};
+
+const setUserOffline = async (userId) => {
+  try {
+    await User.findByIdAndUpdate(userId, { isOnline: false });
+  } catch (error) {
+    console.error('Error setting user offline status:', error.message);
+  }
+};
+
+
+
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
   
     try {
       const user = await User.findOne({ email });
+       // If login is successful, fetch the latest student data
+    // const user = await User.findOne({ email }).populate('bookings');
+
       // const user = await User.findOne({ email: req.body.email });
   
       if (!user) {
@@ -136,6 +159,15 @@ router.post('/login', async (req, res) => {
       if (!passwordMatch) {
         return res.status(401).json({ message: 'Invalid password.' });
       }
+
+    //    // Check if user is already online
+    // if (user.isOnline) {
+    //   return res.status(200).json({ message: 'User already logged in.' });
+    // }
+
+      user.isOnline = true;
+      await user.save();
+    
   
       // Password is correct, proceed with login
 
@@ -143,6 +175,7 @@ router.post('/login', async (req, res) => {
 
       if(user) {
         token = user.generateAuthToken();
+          // Update the student's session data with the latest information
         res.status(200).send({ userData: user, tokens: {access_token: token, expires_in: "1d"} , message: 'Logged in Successfully.' });
     }
 
@@ -151,6 +184,23 @@ router.post('/login', async (req, res) => {
       res.status(500).json({ error: error.message });
     }
   });
+
+  router.post('/logout', async (req, res) => {
+   
+  
+    try {
+     const { email } = req.body;
+      const user = await User.findOne({ email });
+      user.isOnline = false;
+      await user.save();  
+      res.status(200).send(user)
+      // res.status(200).json({ message: 'Login successfully' , user });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  
 
         // Read a single item by ID
 router.get('/get/:id', async (req, res) => {
@@ -191,6 +241,20 @@ router.get('/get/:studentId/:teacherId', async (req, res) => {
 });
 
 
+//get all notifications of student speicifc 
+router.get('/getNotifications/:studentId', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const student = await User.findById(studentId).populate('notifications');
+    const notifications = student?.notifications;
+    res.json(notifications)
+} catch (error) {
+    console.error('Error fetching notifications:', error);
+    throw error; // Handle the error appropriately in your application
+}
+});
+
+
 //send message to teacher
 
 router.post('/sendmessage/:studentId/:teacherId', async (req, res) => {
@@ -217,6 +281,48 @@ router.post('/sendmessage/:studentId/:teacherId', async (req, res) => {
     res.status(200).json({ message: 'Message sent to Teacher', teacher });
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+});
+
+
+
+// Send a message from a student to a teacher
+router.post('/messages/:studentId/:teacherId', async (req, res) => {
+  try {
+    const { studentId , teacherId  } = req.params;
+    const {  message  } = req.body;
+    const sender = await User.findById(studentId);
+    const receiver = await Teacher.findById(teacherId);
+
+    const newMessage = new Message({
+      studentId: studentId,
+      teacherId: teacherId,
+      message,
+      role: 'student',
+      studentName: sender.name,
+      teacherName: receiver.name,
+    });
+
+    await newMessage.save();
+    res.json(newMessage);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get('/getteachermessages/:studentId/:teacherId', async (req, res) => {
+  try {
+    const { studentId, teacherId } = req.params;
+
+    // Find the student by studentId
+    const allmessages = await Message.find();
+
+    console.log("dda" , allmessages , teacherId)
+    const allmessage = allmessages.filter((item) => item.studentId == studentId && item.teacherId == teacherId && item.role === "teacher")
+
+    res.json(allmessage);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

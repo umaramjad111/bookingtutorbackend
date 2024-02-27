@@ -1,9 +1,13 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const session = require('express-session');
 const cors = require('cors');
 const studentRoutes = require('./routers/student');
 const teacherRoutes = require('./routers/teacher');
+const messageRoutes = require('./routers/messages');
+const bookingRoute = require('./routers/booktutor');
+const notificationRoute = require('./routers/notification');
 const userRoutes = require('./routers/user');
 const http = require("http");
 const socketIo = require('./socket'); 
@@ -31,6 +35,10 @@ app.use((req, res, next) => {
 });
 
 
+
+
+
+
 app.use(express.json());
 
 
@@ -53,6 +61,9 @@ db.once('open', () => {
 app.use('/api/users', userRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/teachers', teacherRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/bookings', bookingRoute);
+app.use('/api/notifications', notificationRoute);
 
 // io.on("connection" , (socket) => {
 //   console.log(`socket id: ${socket.id}`);

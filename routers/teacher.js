@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const  Teacher  = require('../models/teacher');
 const  User  = require('../models/student');
+const  Message  = require('../models/message');
 const bcrypt = require('bcrypt');
 const Token = require('../models/token');
 const multer = require('multer');
@@ -135,6 +136,14 @@ router.post('/login', async (req, res) => {
         return res.status(401).json({ message: 'Invalid password.' });
       }
 
+        // Check if user is already online
+    // if (teacher.isOnline) {
+    //   return res.status(200).json({ message: 'Teacher already logged in.' });
+    // }
+
+      teacher.isOnline = true;
+      await teacher.save();
+
       let token = null;
 
       if(teacher) {
@@ -144,6 +153,22 @@ router.post('/login', async (req, res) => {
   
       // // Password is correct, proceed with login
       // res.status(200).json({ message: 'Login successfully' , teacher });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+
+  router.post('/logout', async (req, res) => {
+   
+  
+    try {
+     const { email } = req.body;
+      const teacher = await Teacher.findOne({ email });
+      teacher.isOnline = false;
+      await teacher.save();  
+      res.status(200).send(teacher)
+      // res.status(200).json({ message: 'Login successfully' , user });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -208,34 +233,87 @@ router.get('/get/:id', async (req, res) => {
     try {
       const { teacherId } = req.params;
   
-      // Find all students who have sent messages to the specified teacher
-      const students = await User.find({
-        messages: { $elemMatch: { from: teacherId } }
-      });
+      // const students = await User.find({
+      //   'messages.from': teacherId, // Consider messages where the role is 'student'
+      // });
 
-      console.log("umar" , teacherId)
+      // console.log("umar" , teacherId , students)
   
-      if (!students || students.length === 0) {
-        return res.status(404).json({ message: 'No students found for this teacher' });
-      }
+      // if (!students || students.length === 0) {
+      //   return res.status(404).json({ message: 'No students found for this teacher' });
+      // }
   
-      // Extract details of students who sent messages to the teacher
-      const studentDetails = students.map(student => ({
-        studentId: student._id,
-        studentName: student.name,
-        studentEmail: student.email,
-        subject: student.subject,
-        teacherId: teacherId
-        // Add more fields as needed
-      }));
+      // // Extract details of students who sent messages to the teacher
+      // const studentDetails = students.map(student => ({
+      //   studentId: student._id,
+      //   studentName: student.name,
+      //   studentEmail: student.email,
+      //   subject: student.subject,
+      //   teacherId: teacherId
+      //   // Add more fields as needed
+      // }));
   
       // res.json({ students: studentDetails });
-      res.json(studentDetails);
+      // res.json(studentDetails);
+
+      const allMessages = await Message.find({ teacherId: teacherId });
+      const studentIdsWithMessages = allMessages.map(message => message.studentId);
+      
+      const studentsWithMessages = await User.find({ _id: { $in: studentIdsWithMessages } });
+      
+      res.json(studentsWithMessages);
 
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
+
+
+
+
+
+  // Send a message from a student to a teacher
+router.post('/messages/:studentId/:teacherId', async (req, res) => {
+  try {
+    const { studentId , teacherId  } = req.params;
+    const {  message  } = req.body;
+    const sender = await User.findById(studentId);
+    const receiver = await Teacher.findById(teacherId);
+
+    const newMessage = new Message({
+      studentId: studentId,
+      teacherId: teacherId,
+      message,
+      role: 'teacher',
+      studentName: sender.name,
+      teacherName: receiver.name,
+    });
+
+    await newMessage.save();
+    res.json(newMessage);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
+router.get('/getstudentmessages/:studentId/:teacherId', async (req, res) => {
+  try {
+    const { studentId, teacherId } = req.params;
+
+    // Find the student by studentId
+    const allmessages = await Message.find();
+
+    console.log("dda" , allmessages , teacherId)
+    const allmessage = allmessages.filter((item) => item.studentId == studentId && item.teacherId == teacherId && item.role === "student")
+
+    res.json(allmessage);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+  
   
 
   //send message to teacher
